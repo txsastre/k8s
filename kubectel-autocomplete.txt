@@ -1,0 +1,5 @@
+sudo apt install bash-completion
+kubectl completion bash > ~/.kubectl_completion_bash
+nano ~/.bashrc
+    source ~/.kubectl_completion_bash
+source ~/.bashrc    
