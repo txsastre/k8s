@@ -1,0 +1,12 @@
+# pvc-example.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mi-pvc-de-ejemplo
+spec:
+  storageClassName: nfs-sc  # Nombre de tu StorageClass (ver con `kubectl get storageclass`)
+  accessModes:
+    - ReadWriteOnce  # Modo de acceso (también puede ser ReadWriteMany para NFS)
+  resources:
+    requests:
+      storage: 1Gi  # Tamaño del volumen
