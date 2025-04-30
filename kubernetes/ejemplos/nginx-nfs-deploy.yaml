@@ -3,23 +3,23 @@ kind: Deployment
 metadata:
   name: ejemplo-deployment
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
-      app: ejemplo
+      app: ejemplo-app
   template:
     metadata:
       labels:
-        app: ejemplo
+        app: ejemplo-app
     spec:
       containers:
       - name: ejemplo-container
-        image: nginx:alpine
+        image: nginx:latest
         volumeMounts:
-        - mountPath: /usr/share/nginx/html
-          name: volumen-nfs
+        - mountPath: /mnt/data
+          name: ejemplo-pvc
       volumes:
-      - name: volumen-nfs
+      - name: ejemplo-pvc
         persistentVolumeClaim:
           claimName: ejemplo-pvc
 ---
