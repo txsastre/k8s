@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ejemplo-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ejemplo
+  template:
+    metadata:
+      labels:
+        app: ejemplo
+    spec:
+      containers:
+      - name: ejemplo-container
+        image: nginx:alpine
+        volumeMounts:
+        - mountPath: /usr/share/nginx/html
+          name: volumen-nfs
+      volumes:
+      - name: volumen-nfs
+        persistentVolumeClaim:
+          claimName: ejemplo-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ejemplo-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs-sc
+  resources:
+    requests:
+      storage: 1Gi
