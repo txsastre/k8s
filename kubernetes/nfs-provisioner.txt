@@ -1,0 +1,238 @@
+
+Manual: Configuración deNFS en Kubernetes (k3s) con
+Provisionador Automático
+
+Objetivo: Montar almacenamiento NFS persistente en un cluster
+k3s usando un provisionador automático.
+
+1. Configuración del Servidor NFSRequisitos en el NAS/Servidor
+(192.168.56.10):
+----------------------------------------------
+
+bash
+
+# 1. Crear directorio y asignar permisos
+
+sudo mkdir -p /srv/nfs/k8s
+
+sudo chown nobody:nogroup /srv/nfs/k8s
+
+sudo chmod 1777 /srv/nfs/k8s
+
+# 2. Configurar exports (acceso desde toda la red)
+
+echo "/srv/nfs/k8s *(rw,sync,no_subtree_check,no_root_squash)" |
+sudo tee -a /etc/exports
+
+# 3. Aplicar cambios
+
+sudo exportfs -ra
+
+sudo systemctl restart nfs-kernel-server
+
+# 2. Instalación del Provisionador NFS en k3sDesde el nodo
+maestro:
+----------------------
+
+bash
+
+# 1. Añadir repositorio Helm e instalar
+curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
+sudo apt-get install apt-transport-https --yes
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+sudo apt-get update
+sudo apt-get install helm
+
+
+helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
+
+helm install nfs-provisioner 
+nfs-subdir-external-provisioner/nfs-subdir-external-provisioner
+\
+
+--set nfs.server=192.168.56.10 \
+
+--set nfs.path=/srv/nfs/k8s \
+
+--set storageClass.defaultClass=true \
+
+--set storageClass.name=nfs-sc \
+
+--set nfs.mountOptions="{vers=4.1,nolock,noatime}" \
+
+--set podSecurityContext.runAsUser=0
+
+# 2. Verificar instalación
+
+kubectl get pods -l app=nfs-subdir-external-provisioner
+
+kubectl get storageclass # Debe aparecer "nfs-sc" como DEFAULT
+
+3. Creación de PVCs (PersistentVolumeClaims)Ejemplo básico
+(pvc-shared.yaml):
+
+yaml
+
+apiVersion: v1
+
+kind: PersistentVolumeClaim
+
+metadata:
+
+name: nfs-shared-pvc
+
+spec:
+
+storageClassName: nfs-sc
+
+accessModes:
+
+- ReadWriteMany # Permite múltiples pods
+
+resources:
+
+requests:
+
+storage: 2Gi
+
+Aplicar:
+
+bash
+
+kubectl apply -f pvc-shared.yaml
+
+kubectl get pvc # Estado debe ser "Bound"
+
+4. Ejemplo con Deployment (2 pods compartiendo PVC)Archivo
+deployment-nfs.yaml:
+
+yaml
+
+apiVersion: apps/v1
+
+kind: Deployment
+
+metadata:
+
+name: nginx-nfs-deployment
+
+spec:
+
+replicas: 2
+
+selector:
+
+matchLabels:
+
+app: nginx-nfs
+
+template:
+
+metadata:
+
+labels:
+
+app: nginx-nfs
+
+spec:
+
+containers:
+
+- name: nginx
+
+image: nginx
+
+volumeMounts:
+
+- name: nfs-shared
+
+mountPath: "/usr/share/nginx/html"
+
+volumes:
+
+- name: nfs-shared
+
+persistentVolumeClaim:
+
+claimName: nfs-shared-pvc # Usa el PVC creado
+
+Aplicar:
+
+bash
+
+kubectl apply -f deployment-nfs.yaml
+
+kubectl get pods -l app=nginx-nfs # Verificar estado "Running"
+
+5. Pruebas de FuncionamientoVerificar almacenamiento compartido:
+------------------------------------
+
+bash
+
+# Escribir desde el Pod 1
+
+kubectl exec -it $(kubectl get pods -l app=nginx-nfs -o
+jsonpath='{.items[0].metadata.name}') -- sh -c 'echo "Hola
+desde Pod 1" > /usr/share/nginx/html/test.txt'
+
+# Leer desde el Pod 2
+
+kubectl exec -it $(kubectl get pods -l app=nginx-nfs -o
+jsonpath='{.items[1].metadata.name}') -- cat
+/usr/share/nginx/html/test.txt
+
+# Salida esperada: "Hola desde Pod 1"
+
+# Verificar en el NAS
+
+ssh usuario@192.168.56.10 "cat
+/srv/nfs/k8s/default-nfs-shared-pvc-*/test.txt"
+
+6. Limpieza
+
+bash
+
+# Eliminar Deployment y PVC
+
+kubectl delete deployment nginx-nfs-deployment
+
+kubectl delete pvc nfs-shared-pvc # El PV se borra
+automáticamente (policy: Delete)
+
+# Desinstalar provisionador (opcional)
+
+helm uninstall nfs-provisioner
+
+Resumen de Comandos Útiles
+
+Comando
+
+Descripción
+
+kubectl get pvc
+
+Listar PVCs
+
+kubectl get pv
+
+Listar PersistentVolumes
+
+kubectl describe pod <nombre>
+
+Ver detalles de montaje NFS en un pod
+
+kubectl logs -l app=nfs-subdir-external-provisioner
+
+Logs del provisionador
+
+✅ Qué funciona en este manual:
+
+Provisionador automático de NFS.
+
+PVCs que se vinculan dinámicamente a PVs.
+
+Deployments con múltiples pods compartiendo un mismo volumen.
+
+⚠️ Nota: Este documento omite pruebas fallidas intermedias y
+se centra en el flujo que sí funciona.
+
