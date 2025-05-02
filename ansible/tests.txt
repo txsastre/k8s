@@ -1,2 +1,0 @@
-ansible all -m ping
-ansible -i inv.yaml -m ping
