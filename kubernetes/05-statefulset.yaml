@@ -7,7 +7,7 @@ spec:
     matchLabels:
       app: mypod
   serviceName: "my-frontend"
-  replicas: 1
+  replicas: 2
   template:
     metadata:
       labels:
@@ -31,4 +31,4 @@ spec:
       resources:
         requests:
           storage: 5Gi
-      storageClassName: do-block-storage
+      storageClassName: nfs-sc

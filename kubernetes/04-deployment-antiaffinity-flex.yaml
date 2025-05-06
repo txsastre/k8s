@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nginx-deployment-antiaffinity
+  name: nginx-deployment-antiaffinity-flex
 spec:
   selector:
     matchLabels:
