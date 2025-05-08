@@ -1,0 +1,12 @@
+nfs:
+  mountOptions:
+  - vers=4.1
+  - nolock
+  - noatime
+  path: /srv/nfs/k8s
+  server: 192.168.70.39
+podSecurityContext:
+  runAsUser: 0
+storageClass:
+  defaultClass: true
+  name: nfs-sc

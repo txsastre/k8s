@@ -1,0 +1,33 @@
+✅ 1. Crea el nuevo namespace
+
+kubectl create namespace nfs-provisioner
+
+✅ 2. Obtén la configuración actual del release
+
+Para poder reinstalarlo con los mismos valores, extrae su configuración:
+
+helm get values nfs-provisioner -n default -o yaml > nfs-values.yaml
+
+Puedes revisar y modificar este archivo (nfs-values.yaml) si quieres cambiar algo (como el nombre del storageClass, aunque no es obligatorio).
+✅ 3. Desinstala el release actual (no borra PVs ni PVCs existentes)
+
+helm uninstall nfs-provisioner -n default
+
+    ⚠️ Esto borra el Deployment, ServiceAccount, etc., pero no los PersistentVolumes existentes ni los datos reales.
+
+✅ 4. Reinstala en el nuevo namespace
+
+helm install nfs-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner \
+  -n nfs-provisioner \
+  --create-namespace \
+  -f nfs-values.yaml
+
+✅ 5. Verifica
+
+Comprueba que el pod del provisioner está corriendo:
+
+kubectl get pods -n nfs-provisioner
+
+Y que el StorageClass sigue existiendo y está correctamente configurado:
+
+kubectl get storageclass
