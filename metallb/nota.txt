@@ -1,0 +1,101 @@
+metallb
+install Usando Helm (si usas Helm)
+bash
+
+helm repo add metallb https://metallb.github.io/metallb
+helm install metallb metallb/metallb -n metallb-system --create-namespace
+
+
+🔹 Paso 2: Configurar MetalLB
+
+MetalLB necesita un rango de IPs para asignar a los servicios de tipo LoadBalancer. Puedes configurarlo de dos formas:
+1. Configuración en modo Layer 2 (recomendado para pruebas y entornos pequeños)
+
+Crea un archivo metallb-config.yaml:
+yaml
+
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: default-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  - 192.168.1.100-192.168.1.200  # Cambia esto por tu rango de IPs disponibles
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: default
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+  - default-pool
+
+Aplica la configuración:
+bash
+
+kubectl apply -f metallb-config.yaml
+
+
+2. Configuración en modo BGP (para redes más avanzadas)
+
+Si tu infraestructura soporta BGP (como routers empresariales), puedes usarlo para balanceo de carga más eficiente.
+Ejemplo de configuración:
+yaml
+
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: bgp-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  - 192.168.1.50-192.168.1.99
+---
+apiVersion: metallb.io/v1beta1
+kind: BGPAdvertisement
+metadata:
+  name: bgp-advertisement
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+  - bgp-pool
+  peers:
+  - my-asn: 64500
+    peer-asn: 64500
+    peer-address: 192.168.1.1
+
+
+
+🔹 Paso 3: Probar MetalLB
+
+Crea un servicio de tipo LoadBalancer para probar:
+yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-test
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    app: nginx
+
+Aplícalo:
+bash
+
+kubectl apply -f nginx-service.yaml
+
+Verifica que MetalLB le asignó una IP:
+bash
+
+kubectl get svc nginx-test
+
+Deberías ver algo como:
+
+NAME         TYPE           CLUSTER-IP     EXTERNAL-IP     PORT(S)        AGE
+nginx-test   LoadBalancer   10.96.1.2      192.168.1.100   80:32456/TCP   10s

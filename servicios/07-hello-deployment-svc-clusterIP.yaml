@@ -19,6 +19,7 @@ spec:
         - containerPort: 8080
 
 ---
+# ClusterIP
 apiVersion: v1
 kind: Service
 metadata:

@@ -1,0 +1,12 @@
+borrar o fer cualsevol cosa amb *
+
+per exemple, esborar tots els pvc que comencen amb el mateix nom
+
+kubectl get pvc | grep nfs-pvc-my-csi-app-set | awk '{print $1}' | xargs kubectl delete pvc 
+
+explicació
+-------------------------------------
+	kubectl get pvc: lista todos los PVC.
+	grep '^nfs-pvc-my-csi-app-set-': filtra los que coinciden con el prefijo.
+	awk '{print $1}': extrae el nombre de la columna (el nombre del PVC).
+	xargs kubectl delete pvc: pasa cada nombre al comando kubectl delete.
